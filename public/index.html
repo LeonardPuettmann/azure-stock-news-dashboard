@@ -29,11 +29,11 @@
 
     <script>
         document.getElementById('date-picker').addEventListener('change', function() {
-            fetch('/fetch-text/' + this.value)
-                .then(response => response.text())
-                .then(text => {
-                    document.getElementById('about-me').textContent = text;
-                });
+        fetch('/fetch-file/' + this.value)
+            .then(response => response.text())
+            .then(text => {
+                document.getElementById('about-me').textContent = text;
+            });
         });
     </script>
 </body>
