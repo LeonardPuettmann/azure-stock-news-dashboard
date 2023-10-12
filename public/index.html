@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Simple Webpage</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to My Webpage!</h1>
+    <p>This is a simple webpage with some text blocks.</p>
+
+    <h2>About Me</h2>
+    <p id="about-me">Here is some information about me...</p>
+
+    <h2>My Interests</h2>
+    <p id="my-interests">Here are some things I'm interested in...</p>
+
+    <h2>Contact Me</h2>
+    <p id="contact-me">You can reach me at...</p>
+
+    <h2>Select a Date</h2>
+    <p><input type="date" id="date-picker"></p>
+
+    <script>
+        document.getElementById('date-picker').addEventListener('change', function() {
+            fetch('/fetch-text/' + this.value)
+                .then(response => response.text())
+                .then(text => {
+                    document.getElementById('about-me').textContent = text;
+                });
+        });
+    </script>
+</body>
+</html>
