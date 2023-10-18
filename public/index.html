@@ -29,13 +29,27 @@
     <p><input type="date" id="date-picker"></p>
 
     <script>
-        document.getElementById('date-picker').addEventListener('change', function() {
-        fetch('/fetch-file/' + this.value)
-            .then(response => response.text())
-            .then(text => {
-                document.getElementById('about-me').textContent = text;
-            });
-        });
+        const tickerPicker = document.getElementById('ticker-picker');
+        const datePicker = document.getElementById('date-picker');
+    
+        function fetchFile() {
+            if (tickerPicker.value && datePicker.value) {
+                fetch('/fetch-file/' + datePicker.value)
+                    .then(response => response.json())
+                    .then(data => {
+                        const tickerData = data[tickerPicker.value]["texts"];
+                        if (tickerData) {
+                            document.getElementById('about-me').textContent = JSON.stringify(tickerData);
+                        } else {
+                            document.getElementById('about-me').textContent = 'No data for ' + tickerPicker.value;
+                        }
+                    });
+            }
+        }
+    
+        tickerPicker.addEventListener('change', fetchFile);
+        datePicker.addEventListener('change', fetchFile);
     </script>
+    
 </body>
 </html>
