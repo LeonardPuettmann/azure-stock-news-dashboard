@@ -106,77 +106,85 @@
         let myChart; // Store chart instance
 
         document.addEventListener('DOMContentLoaded', (event) => {
-            const tickerPicker = document.getElementById('ticker-picker');
-            const datePicker = document.getElementById('date-picker');
-            const displayArea = document.getElementById('display-area');
+    const tickerPicker = document.getElementById('ticker-picker');
+    const datePicker = document.getElementById('date-picker');
+    const displayArea = document.getElementById('display-area');
 
-            function fetchFile() {
-                if (tickerPicker.value && datePicker.value) {
-                    // Clear the existing chart instance if it exists
-                    if (myChart) {
-                        myChart.destroy();
-                    }
-
-                    // Fetch and display text data
-                    fetch('/fetch-file/' + datePicker.value)
-                        .then(response => response.json())
-                        .then(data => {
-                            let tickerData = data[tickerPicker.value]["summaries"];
-                            let sentimentData = data[tickerPicker.value]["sentiments"];
-                            if (tickerData && sentimentData) {
-                                // Filter out unwanted strings
-                                tickerData = tickerData.filter(summary => !summary.includes("All photographs subject to copyright."));
-                                displayArea.textContent = tickerData.join(' ');
-
-                                // Count sentiments
-                                let positiveCount = sentimentData.filter(sentiment => sentiment === "positive").length;
-                                let neutralCount = sentimentData.filter(sentiment => sentiment === "neutral").length;
-                                let negativeCount = sentimentData.filter(sentiment => sentiment === "negative").length;
-
-                                // Display sentiment counts
-                                document.getElementById('positive-count').textContent = positiveCount;
-                                document.getElementById('neutral-count').textContent = neutralCount;
-                                document.getElementById('negative-count').textContent = negativeCount;
-                            }
-                    });
-
-                    // Fetch intraday stock price data (e.g., every 5 minutes)
-                    fetch('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=' + tickerPicker.value + '&interval=5min&apikey=SGXL42YQBJ7R7WXL')
-                        .then(response => response.json())
-                        .then(stockPriceData => {
-                            // Extract the intraday price data
-                            const intradayData = stockPriceData['Time Series (5min)']; // Adjust the interval as needed
-
-                            // Get the timestamps in reverse chronological order
-                            const timestamps = Object.keys(intradayData).reverse();
-                            const closePrices = timestamps.map(timestamp => intradayData[timestamp]['4. close']);
-
-                            // Create chart
-                            var ctx = document.getElementById('stock-chart').getContext('2d');
-                            myChart = new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: timestamps,
-                                    datasets: [{
-                                        label: 'Stock Price',
-                                        data: closePrices,
-                                        fill: false,
-                                        borderColor: 'rgb(52, 152, 219)', // Adjust the color as needed
-                                        tension: 0.1
-                                    }]
-                                },
-                            });
-                        });
-     
-                }
+    function fetchFile() {
+        if (tickerPicker.value && datePicker.value) {
+            // Clear the existing chart instance if it exists
+            if (myChart) {
+                myChart.destroy();
             }
 
-            // Fetch data on page load
-            fetchFile();
+            // Fetch and display text data
+            fetch('/fetch-file/' + datePicker.value)
+                .then(response => response.json())
+                .then(data => {
+                    let tickerData = data[tickerPicker.value]["summaries"];
+                    let sentimentData = data[tickerPicker.value]["sentiments"];
+                    if (tickerData && sentimentData) {
+                        // Filter out unwanted strings
+                        tickerData = tickerData.filter(summary => !summary.includes("All photographs subject to copyright."));
+                        displayArea.textContent = tickerData.join(' ');
 
-            tickerPicker.addEventListener('change', fetchFile);
-            datePicker.addEventListener('change', fetchFile);
-        });
+                        // Count sentiments
+                        let positiveCount = sentimentData.filter(sentiment => sentiment === "positive").length;
+                        let neutralCount = sentimentData.filter(sentiment => sentiment === "neutral").length;
+                        let negativeCount = sentimentData.filter(sentiment => sentiment === "negative").length;
+
+                        // Display sentiment counts
+                        document.getElementById('positive-count').textContent = positiveCount;
+                        document.getElementById('neutral-count').textContent = neutralCount;
+                        document.getElementById('negative-count').textContent = negativeCount;
+                    }
+            });
+
+            // Get the selected date from the date picker
+            const selectedDate = datePicker.value; // Assumes that the date picker has an ID of "date-picker"
+
+            // Construct the API call URL with the selected date
+            const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${tickerPicker.value}&interval=5min&apikey=SGXL42YQBJ7R7WXL&date=${selectedDate}`;
+
+            // Fetch intraday stock price data
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(stockPriceData => {
+                    // Extract the intraday price data
+                    const intradayData = stockPriceData['Time Series (5min)']; // Adjust the interval as needed
+                    console.log(intradayData)
+
+                    // Get the timestamps in reverse chronological order
+                    const timestamps = Object.keys(intradayData).reverse();
+                    const closePrices = timestamps.map(timestamp => intradayData[timestamp]['4. close']);
+
+                    // Create chart
+                    var ctx = document.getElementById('stock-chart').getContext('2d');
+                    myChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: timestamps,
+                            datasets: [{
+                                label: 'Stock Price',
+                                data: closePrices,
+                                fill: false,
+                                borderColor: 'rgb(52, 152, 219)', // Adjust the color as needed
+                                tension: 0.1
+                            }]
+                        },
+                    });
+                });
+        }
+    }
+
+    // Fetch data on page load
+    fetchFile();
+
+    // Refresh data when the ticker or date changes
+    tickerPicker.addEventListener('change', fetchFile);
+    datePicker.addEventListener('change', fetchFile);
+});
+
     </script>
 </body>
 </html>
