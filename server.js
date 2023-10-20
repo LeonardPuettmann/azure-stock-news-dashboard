@@ -3,6 +3,19 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
+async function streamToBuffer(readableStream) {
+  return new Promise((resolve, reject) => {
+     const chunks = [];
+     readableStream.on("data", (data) => {
+        chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+     });
+     readableStream.on("end", () => {
+        resolve(Buffer.concat(chunks));
+     });
+     readableStream.on("error", reject);
+  });
+}
+
 // Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -16,11 +29,7 @@ app.listen(port, () => {
 
 const { BlobServiceClient } = require('@azure/storage-blob');
 
-// Add your connection string and container name
-const AZURE_STORAGE_CONNECTION_STRING = 'your-azure-storage-connection-string';
-const containerName = 'your-container-name';
-
-req.params.ticker 
+// req.params.ticker 
 
 const { SecretClient } = require('@azure/keyvault-secrets');
 const { DefaultAzureCredential } = require('@azure/identity');
@@ -32,11 +41,12 @@ let credential = new DefaultAzureCredential();
 let client = new SecretClient(vaultUrl, credential);
 
 app.get('/fetch-file/:date', async (req, res) => {
-    const blobName = 'process-stock-news'+ '-' + req.params.date + '.json';
+    const blobName = 'processed-stock-news'+ '-' + req.params.date + '.json';
   
     // Retrieve the connection string from Azure Key Vault
-    const secret = await client.getSecret('blob-storage-key');
+    const secret = await client.getSecret('blob-connection-string');
     const AZURE_STORAGE_CONNECTION_STRING = secret.value;
+    const containerName = 'processed-stock-news-json';
 
     const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
     const containerClient = blobServiceClient.getContainerClient(containerName);

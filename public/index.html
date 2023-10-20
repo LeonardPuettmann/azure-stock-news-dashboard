@@ -1,21 +1,74 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Simple Webpage</title>
+    <title>turtleshell.io</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap');
+
         body {
-            background-color: black;
+            background-color: rgb(22, 22, 22);
             color: white;
-            font-family: 'Consolas', monospace;
+            font-family: 'IBM Plex Mono', monospace;
             font-size: 14px;
+            padding-left: 20px; /* Add space to the left */
         }
+
+        #sentiment-table {
+            width: 20%;
+            table-layout: auto; /* Change table layout to auto */
+        }
+
+        #sentiment-table th, #sentiment-table td {
+            text-align: left;
+            padding: 4px;
+        }
+
+        .positive {
+            color: rgb(46, 204, 113);
+        }
+
+        .neutral {
+            color: rgb(241, 196, 15);
+        }
+
+        .negative {
+            color: rgb(231, 76, 60);
+        }
+
+        #display-area {
+            border: 1px solid white; /* Add a border */
+            padding: 10px; /* Add some padding */
+            margin: 10px 0; /* Add some margin */
+            width: 80%; /* Set a width */
+            max-width: 800px; /* Set a maximum width */
+            overflow-wrap: break-word; /* Break words properly */
+            word-wrap: break-word; /* Break words properly */
+        }
+
+        #ticker-picker, #date-picker {
+            padding: 2px;
+            font-size: 14px;
+            border-radius: 0px;
+            border: 0px solid white;
+            background-color: rgb(30, 30, 30);
+            color: white;
+        }
+
+        #ticker-picker:hover, #date-picker:hover {
+            background-color: rgb(40, 40, 40);
+        }
+
+        #stock-chart {
+            width: 800px !important; /* Set the width to your desired value */
+            height: 400px !important; /* Set the height to your desired value */
+        }
+
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>Stock dashboard</h1>
-
-    <h2>Select a ticker</h2>
-    <p>
+    
+    <h3>Select a ticker:
         <select id="ticker-picker">
             <option value="MSFT">MSFT</option>
             <option value="AAPL">AAPL</option>
@@ -23,33 +76,107 @@
             <option value="TXN">TXN</option>
             <option value="DOCN">DOCN</option>
         </select>
-    </p>
+    </h3>
+    
+    <h3>Select a date:
+        <input type="date" id="date-picker">
+    </h3>    
 
-    <h2>Select a Date</h2>
-    <p><input type="date" id="date-picker"></p>
+    <div id="display-area"></div>
+
+    <table id="sentiment-table">
+        <tr>
+            <th class="positive">Positive</th>
+            <th class="neutral">Neutral</th>
+            <th class="negative">Negative</th>
+        </tr>
+        <tr>
+            <td id="positive-count" class="positive"></td>
+            <td id="neutral-count" class="neutral"></td>
+            <td id="negative-count" class="negative"></td>
+        </tr>
+    </table>
+
+    <!-- Chart canvas -->
+    <div>
+        <canvas id="stock-chart"></canvas>
+    </div>
 
     <script>
-        const tickerPicker = document.getElementById('ticker-picker');
-        const datePicker = document.getElementById('date-picker');
-    
-        function fetchFile() {
-            if (tickerPicker.value && datePicker.value) {
-                fetch('/fetch-file/' + datePicker.value)
-                    .then(response => response.json())
-                    .then(data => {
-                        const tickerData = data[tickerPicker.value]["texts"];
-                        if (tickerData) {
-                            document.getElementById('about-me').textContent = JSON.stringify(tickerData);
-                        } else {
-                            document.getElementById('about-me').textContent = 'No data for ' + tickerPicker.value;
-                        }
+        let myChart; // Store chart instance
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const tickerPicker = document.getElementById('ticker-picker');
+            const datePicker = document.getElementById('date-picker');
+            const displayArea = document.getElementById('display-area');
+
+            function fetchFile() {
+                if (tickerPicker.value && datePicker.value) {
+                    // Clear the existing chart instance if it exists
+                    if (myChart) {
+                        myChart.destroy();
+                    }
+
+                    // Fetch and display text data
+                    fetch('/fetch-file/' + datePicker.value)
+                        .then(response => response.json())
+                        .then(data => {
+                            let tickerData = data[tickerPicker.value]["summaries"];
+                            let sentimentData = data[tickerPicker.value]["sentiments"];
+                            if (tickerData && sentimentData) {
+                                // Filter out unwanted strings
+                                tickerData = tickerData.filter(summary => !summary.includes("All photographs subject to copyright."));
+                                displayArea.textContent = tickerData.join(' ');
+
+                                // Count sentiments
+                                let positiveCount = sentimentData.filter(sentiment => sentiment === "positive").length;
+                                let neutralCount = sentimentData.filter(sentiment => sentiment === "neutral").length;
+                                let negativeCount = sentimentData.filter(sentiment => sentiment === "negative").length;
+
+                                // Display sentiment counts
+                                document.getElementById('positive-count').textContent = positiveCount;
+                                document.getElementById('neutral-count').textContent = neutralCount;
+                                document.getElementById('negative-count').textContent = negativeCount;
+                            }
                     });
+
+                    // Fetch intraday stock price data (e.g., every 5 minutes)
+                    fetch('https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=' + tickerPicker.value + '&interval=5min&apikey=SGXL42YQBJ7R7WXL')
+                        .then(response => response.json())
+                        .then(stockPriceData => {
+                            // Extract the intraday price data
+                            const intradayData = stockPriceData['Time Series (5min)']; // Adjust the interval as needed
+
+                            // Get the timestamps in reverse chronological order
+                            const timestamps = Object.keys(intradayData).reverse();
+                            const closePrices = timestamps.map(timestamp => intradayData[timestamp]['4. close']);
+
+                            // Create chart
+                            var ctx = document.getElementById('stock-chart').getContext('2d');
+                            myChart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: timestamps,
+                                    datasets: [{
+                                        label: 'Stock Price',
+                                        data: closePrices,
+                                        fill: false,
+                                        borderColor: 'rgb(52, 152, 219)', // Adjust the color as needed
+                                        tension: 0.1
+                                    }]
+                                },
+                            });
+                        });
+     
+                }
             }
-        }
-    
-        tickerPicker.addEventListener('change', fetchFile);
-        datePicker.addEventListener('change', fetchFile);
+
+            // Fetch data on page load
+            fetchFile();
+
+            tickerPicker.addEventListener('change', fetchFile);
+            datePicker.addEventListener('change', fetchFile);
+        });
     </script>
-    
 </body>
 </html>
