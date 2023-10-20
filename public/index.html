@@ -140,39 +140,56 @@
                     }
             });
 
-            // Get the selected date from the date picker
-            const selectedDate = datePicker.value; // Assumes that the date picker has an ID of "date-picker"
-
             // Construct the API call URL with the selected date
-            const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${tickerPicker.value}&interval=5min&apikey=SGXL42YQBJ7R7WXL&date=${selectedDate}`;
+            const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${tickerPicker.value}&apikey=SGXL42YQBJ7R7WXL`;
 
             // Fetch intraday stock price data
             fetch(apiUrl)
                 .then(response => response.json())
                 .then(stockPriceData => {
-                    // Extract the intraday price data
-                    const intradayData = stockPriceData['Time Series (5min)']; // Adjust the interval as needed
-                    console.log(intradayData)
+                    console.log("API Response:", stockPriceData); // Log the data
 
-                    // Get the timestamps in reverse chronological order
-                    const timestamps = Object.keys(intradayData).reverse();
-                    const closePrices = timestamps.map(timestamp => intradayData[timestamp]['4. close']);
+                    if (stockPriceData && stockPriceData['Time Series (Daily)']) {
+                        const dailyData = stockPriceData['Time Series (Daily)'];
+                        const timestamps = Object.keys(dailyData).reverse();
+                        const closePrices = timestamps.map(timestamp => dailyData[timestamp]['4. close']);
 
-                    // Create chart
-                    var ctx = document.getElementById('stock-chart').getContext('2d');
-                    myChart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: timestamps,
-                            datasets: [{
+                        // Highlight the selected date
+                        const selectedDate = datePicker.value;
+                        const selectedIndex = timestamps.indexOf(selectedDate);
+
+                        const datasets = [
+                            {
                                 label: 'Stock Price',
                                 data: closePrices,
                                 fill: false,
-                                borderColor: 'rgb(52, 152, 219)', // Adjust the color as needed
-                                tension: 0.1
-                            }]
-                        },
-                    });
+                                borderColor: 'rgb(46, 134, 193)',
+                                tension: 0.1,
+                            }
+                        ];
+
+                        // Add a different style for the selected date
+                        if (selectedIndex !== -1) {
+                            datasets[0].pointRadius = new Array(timestamps.length).fill(3);
+                            datasets[0].pointBackgroundColor = new Array(timestamps.length).fill('rgb(46, 134, 193)');
+                            datasets[0].pointRadius[selectedIndex] = 6;
+                            datasets[0].pointBackgroundColor[selectedIndex] = 'rgb(245, 176, 65)'; // Change to a different color
+                        }
+
+                        var ctx = document.getElementById('stock-chart').getContext('2d');
+                        myChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: timestamps,
+                                datasets: datasets,
+                            },
+                        });
+                    } else {
+                        console.error("Invalid or missing data received from the API.");
+                    }
+                })
+                .catch(error => {
+                    console.error("An error occurred while fetching stock price data:", error);
                 });
         }
     }
