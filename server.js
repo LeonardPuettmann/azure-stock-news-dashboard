@@ -60,3 +60,4 @@ app.get('/fetch-file/:date', async (req, res) => {
         res.status(500).send(error.message);
     }
 });
+
